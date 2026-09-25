@@ -3,6 +3,7 @@ import { useClientStore } from "../store/useClientStore";
 import { blobToWav16k } from "../lib/wav";
 import { polishTranscript } from "../lib/text";
 import { evaluateHeuristics, HEURISTIC_MS } from "../lib/heuristics";
+import { ensureHotMic, hotMicDevice } from "../lib/micStream";
 import {
   SCAN_MS,
   NODE_TIMEOUT_MS,
@@ -124,10 +125,14 @@ const wordCount = (text) => text.split(/\s+/).filter(Boolean).length;
 export function useVoiceCapture() {
   const recorderRef = useRef(null);
   const chunksRef = useRef([]);
-  const streamRef = useRef(null);
   const recognitionRef = useRef(null);
   const busyRef = useRef(false);
 
+  /**
+   * Ends a take. Deliberately does NOT stop the stream's tracks: the hot mic
+   * stays open for the app's lifetime so macOS never drops the external
+   * microphone and makes the next take pay for a re-handshake.
+   */
   const teardown = useCallback(() => {
     try {
       recognitionRef.current?.abort();
@@ -135,8 +140,12 @@ export function useVoiceCapture() {
       /* already closed */
     }
     recognitionRef.current = null;
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
+    try {
+      if (recorderRef.current?.state === "recording")
+        recorderRef.current.stop();
+    } catch {
+      /* already inactive */
+    }
     recorderRef.current = null;
   }, []);
 
@@ -179,13 +188,10 @@ export function useVoiceCapture() {
       }
     }
 
-    const stream = await acquireStream();
-    streamRef.current = stream;
-
-    const track = stream.getAudioTracks()[0];
-    useClientStore
-      .getState()
-      .setInputDevice(track?.label?.replace(/\s*\(.*\)$/, "") || "Live mic");
+    // The hardware stream is already open and stays open. Starting a take
+    // only spins up a recorder over it, which is why it begins instantly.
+    const stream = await ensureHotMic();
+    useClientStore.getState().setInputDevice(hotMicDevice() || "Live mic");
 
     chunksRef.current = [];
     const recorder = new MediaRecorder(stream);
@@ -212,8 +218,7 @@ export function useVoiceCapture() {
         resolve(new Blob(chunksRef.current, { type: recorder.mimeType }));
       recorder.stop();
     }).catch(() => null);
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
+    // The stream keeps running on purpose; only the recorder stopped.
 
     store.beginTranscribing();
     // Tick 0 of the scan. Every path below races this clock.

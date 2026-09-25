@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useClientStore } from "../store/useClientStore";
 import { DEMO_CLIENTS } from "../data/demoClients";
 import { useVoiceCapture } from "./useVoiceCapture";
+import { ensureHotMic, onMicChange } from "../lib/micStream";
 
 /**
  * The demo engine. Invisible by design: nothing in the UI advertises it, so the
@@ -118,5 +119,26 @@ export function useRemoteWarmup() {
     return () => {
       cancelled = true;
     };
+  }, []);
+}
+
+/**
+ * Opens the microphone once, at app load, and holds it for the whole session.
+ *
+ * Continuity Camera takes seconds to hand the iPhone mic to a new consumer, so
+ * paying that handshake at the start of a take would cost the first words of
+ * every sentence. Opening it here means a take begins instantly.
+ */
+export function useHotMic() {
+  useEffect(() => {
+    const unsubscribe = onMicChange((mic) =>
+      useClientStore.getState().setMic(mic),
+    );
+    ensureHotMic().catch(() => {
+      /* state already reported through onMicChange */
+    });
+    // Intentionally no cleanup that stops tracks: the stream must outlive
+    // every take. It is released when the page unloads.
+    return unsubscribe;
   }, []);
 }

@@ -101,6 +101,8 @@ export const useClientStore = create((set, get) => ({
   remoteHealth: null,
   /** Label of the microphone actually in use, read off the live track. */
   inputDevice: "",
+  /** Hot-mic status: the stream is held open for the whole session. */
+  mic: { ready: false, device: "", error: null },
 
   ingest: (client) => {
     const { ingested } = get();
@@ -141,6 +143,8 @@ export const useClientStore = create((set, get) => ({
     }),
 
   setInputDevice: (inputDevice) => reflow(set, get, { inputDevice }),
+
+  setMic: (mic) => set({ mic, inputDevice: mic.device || get().inputDevice }),
 
   setScanWindow: (scanWindowMs) => reflow(set, get, { scanWindowMs }),
 

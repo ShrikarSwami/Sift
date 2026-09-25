@@ -283,13 +283,31 @@ The bridge is a Vite plugin (`server/inference-bridge.mjs`), so there is no
 second process to start: `/api/inference/{health,warm,take}`. With no
 `SIFT_NODE_HOST` set it returns a clear 503 rather than falling back to anything.
 
-The recorder prefers a specific input (`PREFERRED_INPUT` in
-`src/hooks/useVoiceCapture.js`, currently the iPhone continuity mic) and falls
-back to the OS default when it is not attached. Device labels are only readable
-after permission is granted, so it opens the default stream first, then
-re-acquires if a better input turns out to be available; if that second request
-fails the default stream stands and recording continues uninterrupted. The live
-device name is read off the track and shown on the Call tile.
+### The hot mic
+
+macOS Continuity Camera takes seconds to hand the iPhone microphone to a new
+consumer. Opening the stream per take meant paying that handshake exactly when
+someone started speaking, so the first words were lost.
+
+The stream is therefore opened **once at app load and never closed**
+(`src/lib/micStream.js`). Starting and stopping a take starts and stops a
+`MediaRecorder` over the already-live stream; the OS never sees the connection
+drop, so there is nothing to re-negotiate. Verified: `getUserMedia` is called
+once at load and zero times across subsequent takes, with no track ever
+stopped.
+
+Device selection runs at load, in two passes. Labels are blank until mic
+permission is granted, so there is nothing to match on a cold start — the
+default input is opened first to unlock the labels, then the stream is upgraded
+to any input matching `/iphone/i` if one is attached. If the device is unplugged
+mid-session its track ends, and the next take reopens automatically.
+
+The visible trade is that the browser shows its recording indicator for the
+whole session. The header pill names the live input so it is obvious the right
+mic is connected before anyone speaks.
+
+The live device name is read off the track and shown on the Call tile and in the
+header.
 
 ## Fake Mode
 
