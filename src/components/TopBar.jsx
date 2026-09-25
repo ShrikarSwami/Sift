@@ -1,4 +1,3 @@
-import { Mic } from "lucide-react";
 import { useClientStore } from "../store/useClientStore";
 
 function SiftMark() {
@@ -108,28 +107,6 @@ function RemoteStatus() {
   );
 }
 
-/** The hot mic. Answers "is the iPhone actually connected" before speaking. */
-function MicStatus() {
-  const mic = useClientStore((s) => s.mic);
-  const label = mic.ready ? mic.device || "Mic live" : (mic.error ?? "Mic off");
-
-  return (
-    <div
-      title={mic.error ?? `${mic.device} held open for the session`}
-      className="hidden items-center gap-2.5 rounded-full border border-line-strong bg-ink-2 py-2 pr-4 pl-3.5 xl:flex"
-    >
-      <Mic
-        size={14}
-        strokeWidth={2}
-        className={mic.ready ? "text-metric-likelihood" : "text-fg-faint"}
-      />
-      <span className="max-w-[18ch] truncate text-[13px] font-medium text-fg-muted">
-        {label}
-      </span>
-    </div>
-  );
-}
-
 export function TopBar() {
   const count = useClientStore((s) => s.clients.length);
 
@@ -155,7 +132,6 @@ export function TopBar() {
         <p className="tnum hidden text-[15px] whitespace-nowrap text-fg-faint sm:block">
           <span className="font-medium text-fg-muted">{count}</span> active
         </p>
-        <MicStatus />
         <FakeModeToggle />
         <RemoteStatus />
       </div>

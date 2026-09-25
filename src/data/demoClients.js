@@ -10,6 +10,14 @@
  * in the app knows these two are special.
  */
 
+/**
+ * Direct link opened by Heer's Email tile. Swap this for a permalink to the
+ * actual thread (open it in Gmail and copy the URL) — any string works, it is
+ * passed straight to window.open.
+ */
+export const HEER_GMAIL_URL =
+  "https://mail.google.com/mail/u/0/#search/from%3Aheer.jariwala812%40gmail.com";
+
 export const METRICS = [
   {
     key: "likelihood",
@@ -43,7 +51,7 @@ export const heer = {
   shortName: "Heer",
   initials: "HJ",
   role: "Principal",
-  company: "Meridian Lane Capital",
+  company: "Bank of America",
   location: "Boston, MA",
   email: "heer.jariwala812@gmail.com",
   stage: "Diligence",
@@ -56,10 +64,7 @@ export const heer = {
       label: "Email",
       meta: "9-message thread · 4 days",
       from: "heer.jariwala812@gmail.com",
-      action: {
-        label: "Open in Gmail",
-        url: "https://mail.google.com/mail/u/0/#search/from%3Aheer.jariwala812%40gmail.com",
-      },
+      action: { label: "Open in Gmail", url: HEER_GMAIL_URL },
       excerpt:
         "Circling back — the team liked the deck, but we want to see another two quarters of retention before we can size anything. Can we revisit in the new year?",
     },
