@@ -16,7 +16,7 @@
  * passed straight to window.open.
  */
 export const HEER_GMAIL_URL =
-  "https://mail.google.com/mail/u/0/#search/from%3Aheer.jariwala812%40gmail.com";
+  "https://mail.google.com/mail/u/0/#inbox/FMfcgzQhWfPmxVrWfJvlPlrTMccmFxvf";
 
 export const METRICS = [
   {

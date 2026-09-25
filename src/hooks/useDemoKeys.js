@@ -3,12 +3,13 @@ import { useClientStore } from "../store/useClientStore";
 import { DEMO_CLIENTS } from "../data/demoClients";
 import { useVoiceCapture } from "./useVoiceCapture";
 import { ensureHotMic, onMicChange } from "../lib/micStream";
+import { playChime } from "../lib/chime";
 
 /**
  * The demo engine. Invisible by design: nothing in the UI advertises it, so the
  * board looks like it is reacting to live traffic rather than to a keystroke.
  *
- *   h → Heer's email lands
+ *   h → Heer's email lands (toast first, card 500ms later)
  *   c → toggles the live mic on Carolina: press to record, press again to score
  *   j → the same, pointed at Judge Johns
  *   1-5 → force a score band onto the selected card (stage override)
@@ -35,6 +36,9 @@ export const SCORE_BANDS = [
   // 5 — Instant priority #1
   { likelihood: 99, hesitance: 2, effort: 5 },
 ];
+
+/** Simulated webhook processing time between the alert and the card landing. */
+export const INBOUND_DELAY_MS = 500;
 
 export function useDemoKeys() {
   const toggleVoice = useVoiceCapture();
@@ -82,7 +86,21 @@ export function useDemoKeys() {
       const client = DEMO_CLIENTS[key];
       if (!client) return;
       event.preventDefault();
-      ingest(client);
+
+      // Already on the board — just select it, no second notification.
+      if (useClientStore.getState().clients.some((c) => c.id === client.id)) {
+        useClientStore.getState().select(client.id);
+        return;
+      }
+
+      // The notification fires immediately and the card lands 500ms later, so
+      // the board reads as reacting to an inbound webhook rather than to a key.
+      useClientStore.getState().pushToast({
+        label: "New email received",
+        message: `${client.name} (${client.company})`,
+      });
+      playChime();
+      setTimeout(() => ingest(client), INBOUND_DELAY_MS);
     };
 
     window.addEventListener("keydown", onKeyDown);

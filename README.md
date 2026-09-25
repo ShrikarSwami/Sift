@@ -42,7 +42,7 @@ The pipeline boots empty. A hidden `window` keydown listener drives the walkthro
 
 | Key | What happens |
 |-----|--------------|
-| `h` | Heer Jariwala's email thread lands — high hesitance, high effort, low likelihood |
+| `h` | Inbound email alert fires, then Heer's card lands 500ms later |
 | `c` | Toggles the live mic on Carolina — press to record, press again to transcribe and score locally |
 | `j` | Opens a numbered judge session — `Judge Johns 1`, then `2`, … |
 | `1`–`5` | Force a score band onto the selected card, lowest to highest |
@@ -116,6 +116,17 @@ The remote round-trip is masked rather than waited out. On the second `c`:
 Whichever finishes first waits for the other: the scan's progress bar holds at
 94% until the node answers, and the scores are **buffered** until the scan
 window elapses, so the re-sort can never fire mid-animation.
+
+### Inbound events
+
+`h` shows a toast immediately and injects the card **500ms later**
+(`INBOUND_DELAY_MS`), so the board reads as reacting to a webhook rather than to
+a keystroke. The toast carries a synthesised two-note chime — no audio file to
+go missing on a conference network — and drains a cherry spine over its 3.5s
+life so its remaining time is visible rather than guessed at.
+
+Pressing `h` again selects the existing card without re-notifying or
+duplicating it.
 
 ### Cards and transcripts
 

@@ -2,6 +2,7 @@ import { TopBar } from "./components/TopBar";
 import { Pipeline } from "./components/Pipeline";
 import { Inspector } from "./components/Inspector";
 import { DebugCorner } from "./components/DebugCorner";
+import { Toasts } from "./components/Toasts";
 import { useDemoKeys, useRemoteWarmup, useHotMic } from "./hooks/useDemoKeys";
 
 export default function App() {
@@ -21,6 +22,7 @@ export default function App() {
         <Pipeline />
         <Inspector />
       </main>
+      <Toasts />
       <DebugCorner />
     </div>
   );

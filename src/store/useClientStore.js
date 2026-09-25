@@ -103,6 +103,8 @@ export const useClientStore = create((set, get) => ({
   inputDevice: "",
   /** Hot-mic status: the stream is held open for the whole session. */
   mic: { ready: false, device: "", error: null },
+  /** Inbound event notifications, newest first. */
+  toasts: [],
 
   ingest: (client) => {
     const { ingested } = get();
@@ -145,6 +147,15 @@ export const useClientStore = create((set, get) => ({
   setInputDevice: (inputDevice) => reflow(set, get, { inputDevice }),
 
   setMic: (mic) => set({ mic, inputDevice: mic.device || get().inputDevice }),
+
+  pushToast: ({ label, message, kind = "email", ttl = 3500 }) => {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    set({ toasts: [...get().toasts, { id, label, message, kind, ttl }] });
+    return id;
+  },
+
+  dismissToast: (id) =>
+    set({ toasts: get().toasts.filter((t) => t.id !== id) }),
 
   setScanWindow: (scanWindowMs) => reflow(set, get, { scanWindowMs }),
 
