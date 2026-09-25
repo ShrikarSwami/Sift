@@ -1,0 +1,7 @@
+node_modules
+dist
+.DS_Store
+
+# Real node address and model tags stay out of the repo.
+.env.local
+.env*.local
