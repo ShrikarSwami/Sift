@@ -44,7 +44,7 @@ The pipeline boots empty. A hidden `window` keydown listener drives the walkthro
 |-----|--------------|
 | `h` | Heer Jariwala's email thread lands — high hesitance, high effort, low likelihood |
 | `c` | Toggles the live mic on Carolina — press to record, press again to transcribe and score locally |
-| `j` | The same, pointed at Judge Johns |
+| `j` | The same, pointed at Judge Johns (Live Audit) |
 | `1`–`5` | Force a score band onto the selected card, lowest to highest |
 | `r` | Clears the ingested clients (Fake Mode, if on, stays on) |
 | `f` | Toggles Fake Mode — same as the header badge |
@@ -55,11 +55,13 @@ showing three unrelated numbers:
 
 | Key | l / h / e | Meaning |
 |---|---|---|
-| `1` | 20 / 85 / 90 | Low intent, high effort |
-| `2` | 40 / 62 / 70 | — |
-| `3` | 60 / 40 / 50 | Moderate intent |
-| `4` | 80 / 21 / 27 | — |
+| `1` | 15 / 85 / 90 | Low intent, high effort |
+| `2` | 35 / 65 / 70 | — |
+| `3` | 55 / 45 / 50 | Moderate intent |
+| `4` | 77 / 23 / 27 | — |
 | `5` | 99 / 2 / 5 | Instant priority #1 |
+
+These apply instantly with no network or audio involved.
 
 The board re-sorts on the new score with the same Framer Motion transition as a
 live result, and the dashboard labels it **"Manual score — set from the
@@ -114,6 +116,37 @@ The remote round-trip is masked rather than waited out. On the second `c`:
 Whichever finishes first waits for the other: the scan's progress bar holds at
 94% until the node answers, and the scores are **buffered** until the scan
 window elapses, so the re-sort can never fire mid-animation.
+
+### Degradation ladder
+
+The board must never stall or show a failure mid-pitch, so every path ends in a
+completed sequence. There is no error state in the UI at all.
+
+1. **Audio path** — recorded audio to the node for transcription + scoring,
+   `NODE_TIMEOUT_MS` (3.5s).
+2. **Text path** — if the audio is unusable (empty, or `decodeAudioData` throws
+   "Unable to decode audio data"), the live Web Speech captions already on
+   screen are sent straight to the scorer as text, skipping transcription
+   entirely. Budget `TEXT_SCORE_TIMEOUT_MS`.
+3. **Fallback** — the stage profile (`FALLBACK_SCORES`), which still fires the
+   `HIGH INTENT DETECTED` banner and the re-rank.
+
+Two guards sit on that ladder:
+
+- **A zero is treated as a failed read, not a score.** A live positive
+  utterance scoring 0 means the transcript was junk or the model misread it, so
+  it drops to the next rung rather than displaying 0.
+- **Captions shorter than `MIN_TRANSCRIPT_WORDS` are not scored.** Two stray
+  words produce a confident-looking low number — measured: a 2-word fragment
+  came back 20/80/90. Below the floor, the fallback is used.
+
+The text path is skipped when the node has *already* missed its deadline —
+retrying a dead node would just stall twice.
+
+Each path labels itself in the dashboard (`describeProvenance`): a live score
+names the model and its timings, a caption-scored result says transcription was
+skipped rather than reporting `whisper · 0.0s` for a step that never ran, and
+the fallback says plainly that model output was not used.
 
 ### Watchdog
 

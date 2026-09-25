@@ -66,6 +66,63 @@ function MetricRow({ metric, value, target, pending }) {
   );
 }
 
+/**
+ * What the board is allowed to say about where these numbers came from.
+ *
+ * The three paths produce visibly different provenance: a live score names the
+ * model and its timings, a caption-scored result says transcription was
+ * skipped (whisper never ran, so it must not report 0.0s for it), and the
+ * fallback says plainly that the model output was not used.
+ */
+function describeProvenance(client) {
+  if (client.overridden)
+    return {
+      caption: "Manual score — set from the keyboard",
+      rows: [
+        ["Source", "Manual override"],
+        ["Set by", "Keyboard shortcut"],
+        ["Model output", "Not used for these scores"],
+        ["Host", "—"],
+      ],
+    };
+
+  const r = client.remote;
+  if (!r) return null;
+  const secs = (ms) => `${((ms ?? 0) / 1000).toFixed(1)}s`;
+
+  if (r.fallback)
+    return {
+      caption: `Fallback profile — ${r.fallbackReason ?? "node did not answer in time"}`,
+      rows: [
+        ["Source", "Stage fallback profile"],
+        ["Reason", r.fallbackReason ?? "Node did not answer in time"],
+        ["Transcript", `${r.words || 0} words`],
+        ["Model output", "Not used for these scores"],
+      ],
+    };
+
+  if (r.textOnly)
+    return {
+      caption: `${r.model} · scored from live captions · ${secs(r.ms)}`,
+      rows: [
+        ["Transcription", "Skipped — live captions used"],
+        ["Inference", `${r.model} · ${secs(r.ms)}`],
+        ["Transcript", `${r.words || 0} words`],
+        ["Host", "Local node — nothing left the network"],
+      ],
+    };
+
+  return {
+    caption: `${r.model} · on-device · ${secs(r.totalMs || r.ms)} end to end`,
+    rows: [
+      ["Transcription", `on-device · ${secs(r.transcribeMs)}`],
+      ["Inference", `${r.model} · ${secs(r.ms)}`],
+      ["Transcript", `${r.words || 0} words`],
+      ["Host", "Local node — nothing left the network"],
+    ],
+  };
+}
+
 export function ScoreDashboard({ client }) {
   const { scores } = client;
 
@@ -87,6 +144,7 @@ export function ScoreDashboard({ client }) {
   const animated = { likelihood, hesitance, effort };
 
   const pending = Boolean(client.pending);
+  const provenance = describeProvenance(client);
 
   return (
     <section
@@ -98,18 +156,10 @@ export function ScoreDashboard({ client }) {
           Score Dashboard
         </h3>
         <p className="flex items-center gap-2 text-[14px] text-fg-faint">
-          {client.remote ? (
+          {provenance ? (
             <>
               <Cpu size={14} strokeWidth={1.75} className="text-brown-400" />
-              <span>
-                {client.remote.model} · on-device ·{" "}
-                <span className="tnum">
-                  {((client.remote.totalMs || client.remote.ms) / 1000).toFixed(
-                    1,
-                  )}
-                  s end to end
-                </span>
-              </span>
+              <span>{provenance.caption}</span>
             </>
           ) : (
             "Each metric scored 0–100, independently"
@@ -202,20 +252,9 @@ export function ScoreDashboard({ client }) {
           )}
           <p className="text-[17px] leading-relaxed text-fg">{client.read}</p>
 
-          {client.remote && (
+          {provenance && (
             <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 border-t border-line pt-4">
-              {[
-                [
-                  "Transcription",
-                  `whisper · ${(client.remote.transcribeMs / 1000).toFixed(1)}s`,
-                ],
-                [
-                  "Inference",
-                  `${client.remote.model} · ${(client.remote.ms / 1000).toFixed(1)}s`,
-                ],
-                ["Transcript", `${client.remote.words || 0} words`],
-                ["Host", "Local node — nothing left the network"],
-              ].map(([label, value]) => (
+              {provenance.rows.map(([label, value]) => (
                 <div key={label} className="min-w-0">
                   <dt className="text-[11px] font-medium tracking-[0.1em] text-fg-faint uppercase">
                     {label}

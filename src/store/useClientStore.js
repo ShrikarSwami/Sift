@@ -151,7 +151,12 @@ export const useClientStore = create((set, get) => ({
     });
   },
 
-  failVoice: (error) => reflow(set, get, { voicePhase: "error", error }),
+  /**
+   * Records that something went wrong opening the mic. Deliberately not a
+   * phase change: the board must never present a failure state mid-pitch, so
+   * this surfaces only as a quiet note in the dashboard provenance.
+   */
+  noteCaptureIssue: (error) => reflow(set, get, { error }),
 
   /** Clears the ingested clients and any voice session. Fake Mode stays on. */
   reset: () =>

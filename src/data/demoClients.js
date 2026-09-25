@@ -161,7 +161,7 @@ export const DEMO_CLIENTS = { h: heer };
 /** Second live-mic persona, for scoring a judge in the room rather than a client. */
 export const judge = {
   id: "judge",
-  name: "Judge Johns",
+  name: "Judge Johns (Live Audit)",
   shortName: "Judge",
   initials: "JJ",
   role: "Panel Judge",
@@ -234,9 +234,7 @@ export function buildLiveClient({
         ? "On mic"
         : phase === "transcribing" || phase === "scoring"
           ? "Processing"
-          : phase === "error"
-            ? "Capture failed"
-            : base.stage,
+          : base.stage,
     liveBadge: VOICE_STATUS[phase]
       ? {
           label: VOICE_STATUS[phase],
@@ -256,9 +254,7 @@ export function buildLiveClient({
               ? "on-device · transcribing"
               : phase === "scoring"
                 ? "local model · scoring"
-                : phase === "error"
-                  ? "Capture failed"
-                  : `scored locally · ${result?.model ?? "local model"}`,
+                : `scored locally · ${result?.model ?? "local model"}`,
         live: phase === "listening",
         excerpt: transcript,
       },
@@ -273,6 +269,8 @@ export function buildLiveClient({
     insight: scored
       ? {
           fallback: Boolean(result.fallback),
+          fallbackReason: result.fallbackReason ?? null,
+          textOnly: Boolean(result.textOnly),
           headline:
             result.likelihood >= 85
               ? "HIGH INTENT DETECTED: SHE WANTS IT :D"
@@ -287,6 +285,8 @@ export function buildLiveClient({
           transcribeMs: result.transcribeMs ?? 0,
           totalMs: result.totalMs ?? 0,
           fallback: Boolean(result.fallback),
+          fallbackReason: result.fallbackReason ?? null,
+          textOnly: Boolean(result.textOnly),
           words: transcript.split(/\s+/).filter(Boolean).length,
         }
       : null,
@@ -297,10 +297,10 @@ export function buildLiveClient({
           ? "Transcribing the take on the local node."
           : phase === "scoring"
             ? "The local model is scoring the transcript on-device."
-            : phase === "error"
-              ? (error ?? "The remote call failed.")
-              : result?.fallback
-                ? "Scored from the on-stage fallback profile — the node did not answer in time."
+            : result?.fallback
+              ? `Scored from the on-stage fallback profile — ${result.fallbackReason ?? "the node did not answer in time"}.`
+              : result?.textOnly
+                ? "Scored from the live captions by the local model — the recorded audio was not usable."
                 : "Scored live from the call transcript by the local model. No audio left the network.",
     signals: [],
     nextMove: scored ? base.nextMove : null,

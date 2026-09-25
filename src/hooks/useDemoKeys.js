@@ -24,13 +24,13 @@ import { useVoiceCapture } from "./useVoiceCapture";
  */
 export const SCORE_BANDS = [
   // 1 — Low intent / high effort
-  { likelihood: 20, hesitance: 85, effort: 90 },
+  { likelihood: 15, hesitance: 85, effort: 90 },
   // 2 — interpolated between the specified 1 and 3
-  { likelihood: 40, hesitance: 62, effort: 70 },
+  { likelihood: 35, hesitance: 65, effort: 70 },
   // 3 — Moderate intent
-  { likelihood: 60, hesitance: 40, effort: 50 },
+  { likelihood: 55, hesitance: 45, effort: 50 },
   // 4 — interpolated between the specified 3 and 5
-  { likelihood: 80, hesitance: 21, effort: 27 },
+  { likelihood: 77, hesitance: 23, effort: 27 },
   // 5 — Instant priority #1
   { likelihood: 99, hesitance: 2, effort: 5 },
 ];

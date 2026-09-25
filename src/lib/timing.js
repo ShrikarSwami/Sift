@@ -20,3 +20,23 @@ export const NODE_TIMEOUT_MS = 3500;
  * this way as a fallback rather than claiming it came from the model.
  */
 export const FALLBACK_SCORES = { l: 98, h: 6, e: 10 };
+
+/**
+ * Budget for the text-only scoring path, which skips transcription entirely.
+ *
+ * Measured: the node answers a text score in 2.85-2.92s. A flat 3.0s budget
+ * loses that race about as often as it wins it, which would mean showing the
+ * canned profile instead of a real score. 3.4s still lands inside the 3.5s
+ * scan, so the reveal timing on screen is identical either way — the extra
+ * 400ms costs nothing visually and buys the real number.
+ */
+export const TEXT_SCORE_TIMEOUT_MS = 3400;
+
+/**
+ * A transcript shorter than this is treated as noise rather than speech.
+ *
+ * Scoring two stray words produces a confident-looking low number, which is
+ * exactly the outcome the stage must never show when someone has just spoken
+ * positively. Below this, the fallback is used instead.
+ */
+export const MIN_TRANSCRIPT_WORDS = 4;
