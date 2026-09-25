@@ -13,6 +13,29 @@ cp .env.example .env.local   # point it at your own inference node
 npm run dev                  # http://localhost:5173
 ```
 
+### Keeping it up
+
+For a demo machine, run it under launchd instead so the site is always at
+`http://localhost:5173` — through crashes, logouts and reboots — with Vite's HMR
+still live, so edits appear in the browser with nothing to restart.
+
+```bash
+npm run serve:install   # install + start the LaunchAgent
+npm run serve:status    # is it running?
+npm run serve:logs      # tail ~/Library/Logs/sift-dev.log
+npm run serve:restart   # after changing .env.local
+npm run serve:stop      # unload it
+```
+
+`KeepAlive` is on, so killing the process brings it straight back. It binds to
+**localhost only, on purpose**: the dev server exposes `/api/inference/*`, which
+executes commands on the inference node over SSH, and that must not be reachable
+from the wider network. Adding `--host` to view it from a phone would expose
+that endpoint to anyone on the same network.
+
+Changes to `.env.local` need `npm run serve:restart` — Vite reads env at
+startup, unlike source files.
+
 ## The demo engine
 
 The pipeline boots empty. A hidden `window` keydown listener drives the walkthrough:

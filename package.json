@@ -5,7 +5,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview --port 4173"
+    "preview": "vite preview --port 4173",
+    "serve:install": "cp scripts/com.slhj.sift-dev.plist ~/Library/LaunchAgents/ && launchctl load -w ~/Library/LaunchAgents/com.slhj.sift-dev.plist",
+    "serve:stop": "launchctl unload -w ~/Library/LaunchAgents/com.slhj.sift-dev.plist",
+    "serve:restart": "launchctl kickstart -k gui/$(id -u)/com.slhj.sift-dev",
+    "serve:status": "launchctl list | grep com.slhj.sift-dev || echo 'not running'",
+    "serve:logs": "tail -f ~/Library/Logs/sift-dev.log"
   },
   "keywords": [],
   "author": "",
