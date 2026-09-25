@@ -161,7 +161,7 @@ export const DEMO_CLIENTS = { h: heer };
 /** Second live-mic persona, for scoring a judge in the room rather than a client. */
 export const judge = {
   id: "judge",
-  name: "Judge Johns (Live Audit)",
+  name: "Judge Johns",
   shortName: "Judge",
   initials: "JJ",
   role: "Panel Judge",
@@ -210,6 +210,8 @@ export const VOICE_STATUS = {
 
 export function buildLiveClient({
   target = "carolina",
+  judgeSessionCount = 1,
+  scanWindowMs,
   phase,
   liveTranscript,
   finalTranscript,
@@ -218,6 +220,9 @@ export function buildLiveClient({
   inputDevice,
 }) {
   const base = VOICE_TARGETS[target] ?? carolina;
+  // Each judge session is its own card, numbered as it is recorded.
+  const name =
+    target === "judge" ? `Judge Johns ${judgeSessionCount}` : base.name;
   const pending =
     phase === "listening" || phase === "transcribing" || phase === "scoring";
   const transcript = (finalTranscript || liveTranscript || "").trim();
@@ -225,6 +230,8 @@ export function buildLiveClient({
 
   return {
     ...base,
+    name,
+    scanWindowMs,
     /** Pinned rows sort above everything, regardless of score. */
     pinned: pending,
     pending,
@@ -267,16 +274,26 @@ export function buildLiveClient({
         }
       : { likelihood: 0, hesitance: 0, effort: 0 },
     insight: scored
-      ? {
-          fallback: Boolean(result.fallback),
-          fallbackReason: result.fallbackReason ?? null,
-          textOnly: Boolean(result.textOnly),
-          headline:
-            result.likelihood >= 85
-              ? "HIGH INTENT DETECTED: SHE WANTS IT :D"
-              : `SCORED ${result.likelihood} BY ${String(result.model).toUpperCase()}`,
-          body: result.keyTakeaway,
-        }
+      ? result.heuristic
+        ? // The heuristic takeaway already carries its own band label, so it
+          // must not be stacked under a second one saying the same thing.
+          result.likelihood >= 85
+          ? {
+              headline: "HIGH INTENT DETECTED: SHE WANTS IT :D",
+              body: result.keyTakeaway.replace(
+                /^HIGH INTENT DETECTED:\s*/i,
+                "",
+              ),
+            }
+          : { headline: result.keyTakeaway, body: null }
+        : {
+            fallback: Boolean(result.fallback),
+            headline:
+              result.likelihood >= 85
+                ? "HIGH INTENT DETECTED: SHE WANTS IT :D"
+                : `SCORED ${result.likelihood} BY ${String(result.model).toUpperCase()}`,
+            body: result.keyTakeaway,
+          }
       : null,
     remote: scored
       ? {
@@ -287,6 +304,8 @@ export function buildLiveClient({
           fallback: Boolean(result.fallback),
           fallbackReason: result.fallbackReason ?? null,
           textOnly: Boolean(result.textOnly),
+          heuristic: Boolean(result.heuristic),
+          matched: result.matched ?? null,
           words: transcript.split(/\s+/).filter(Boolean).length,
         }
       : null,
@@ -299,9 +318,11 @@ export function buildLiveClient({
             ? "The local model is scoring the transcript on-device."
             : result?.fallback
               ? `Scored from the on-stage fallback profile — ${result.fallbackReason ?? "the node did not answer in time"}.`
-              : result?.textOnly
-                ? "Scored from the live captions by the local model — the recorded audio was not usable."
-                : "Scored live from the call transcript by the local model. No audio left the network.",
+              : result?.heuristic
+                ? "Scored on-device by local edge heuristics — no model call was needed."
+                : result?.textOnly
+                  ? "Scored from the live captions by the local model — the recorded audio was not usable."
+                  : "Scored live from the call transcript by the local model. No audio left the network.",
     signals: [],
     nextMove: scored ? base.nextMove : null,
   };

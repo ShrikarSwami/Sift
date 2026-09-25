@@ -44,7 +44,7 @@ The pipeline boots empty. A hidden `window` keydown listener drives the walkthro
 |-----|--------------|
 | `h` | Heer Jariwala's email thread lands — high hesitance, high effort, low likelihood |
 | `c` | Toggles the live mic on Carolina — press to record, press again to transcribe and score locally |
-| `j` | The same, pointed at Judge Johns (Live Audit) |
+| `j` | Opens a numbered judge session — `Judge Johns 1`, then `2`, … |
 | `1`–`5` | Force a score band onto the selected card, lowest to highest |
 | `r` | Clears the ingested clients (Fake Mode, if on, stays on) |
 | `f` | Toggles Fake Mode — same as the header badge |
@@ -117,11 +117,36 @@ Whichever finishes first waits for the other: the scan's progress bar holds at
 94% until the node answers, and the scores are **buffered** until the scan
 window elapses, so the re-sort can never fire mid-animation.
 
+### Local edge heuristics (the fast path)
+
+Before any model call, the transcript is matched against phrase rules in
+`src/lib/heuristics.js`. A hit short-circuits everything: no network, no model,
+settled in **1.5s**.
+
+| Band | Phrases | Scores | Takeaway |
+|---|---|---|---|
+| Positive | love to invest, move forward, greatest, rocking wit, looks great, amazing | 95 / 5 / 10 | HIGH INTENT DETECTED: Ready to sign. |
+| Mediocre | think about it, not sure, maybe, need some time, follow up | 50 / 60 / 70 | MODERATE INTENT: Requires standard follow-up cycle. |
+| Negative | too expensive, not a fit, pass, no thanks, bad idea | 10 / 90 / 95 | LOW INTENT: Deprioritize and archive. |
+
+Matching is **word-boundary anchored, not substring** — a bare `pass` must not
+fire on "passionate" or "password", and `maybe` must not fire on "maybes". Both
+cases are covered by tests.
+
+Bands are tested in the order above, so an utterance carrying both enthusiasm
+and a hedge reads as the stronger signal. That bias is deliberate: on stage,
+under-reading real intent is the costlier mistake.
+
+The dashboard labels this path **"Scored via Local Edge Heuristics - 1.5s"** and
+reports which phrase matched, so the fast path is never mistaken for a model
+result. With no phrase hit, the ladder below runs as normal.
+
 ### Degradation ladder
 
 The board must never stall or show a failure mid-pitch, so every path ends in a
 completed sequence. There is no error state in the UI at all.
 
+0. **Heuristic path** — a phrase hit settles in 1.5s with no network at all.
 1. **Audio path** — recorded audio to the node for transcription + scoring,
    `NODE_TIMEOUT_MS` (3.5s).
 2. **Text path** — if the audio is unusable (empty, or `decodeAudioData` throws

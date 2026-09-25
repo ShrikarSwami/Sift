@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { useClientStore } from "../store/useClientStore";
 import { blobToWav16k } from "../lib/wav";
 import { polishTranscript } from "../lib/text";
+import { evaluateHeuristics, HEURISTIC_MS } from "../lib/heuristics";
 import {
   SCAN_MS,
   NODE_TIMEOUT_MS,
@@ -25,9 +26,9 @@ import {
  * On stop: WAV → node (whisper.cpp) → node (local LLM) → scores. No audio or
  * transcript ever leaves the network.
  */
-/** Waits out the remainder of the scan, then reveals whatever we have. */
-async function revealAfterScan(store, scanStarted, result) {
-  const remaining = SCAN_MS - (Date.now() - scanStarted);
+/** Waits out the remainder of the scan window, then reveals whatever we have. */
+async function revealAfterScan(store, scanStarted, result, windowMs = SCAN_MS) {
+  const remaining = windowMs - (Date.now() - scanStarted);
   if (remaining > 0) await new Promise((r) => setTimeout(r, remaining));
   store.completeAnalysis({ ...result, scanMs: Date.now() - scanStarted });
 }
@@ -196,9 +197,24 @@ export function useVoiceCapture() {
     // Tick 0 of the scan. Every path below races this clock.
     const scanStarted = Date.now();
 
-    // Captions captured while the mic was open. These are the safety net when
-    // the recorded audio turns out to be undecodable.
+    // Captions captured while the mic was open. These are both the heuristic
+    // input and the safety net when the recorded audio is undecodable.
     const spoken = (useClientStore.getState().liveTranscript ?? "").trim();
+
+    // --- Path 0: local edge heuristics. Deterministic, no network, no model.
+    // A phrase hit short-circuits everything below and settles in 1.5s.
+    const heuristic = evaluateHeuristics(spoken);
+    if (heuristic) {
+      store.setScanWindow(HEURISTIC_MS);
+      store.setFinalTranscript(polishTranscript(spoken));
+      store.beginScoring();
+      return revealAfterScan(
+        store,
+        scanStarted,
+        { ...heuristic, transcribeMs: 0, ms: 0, totalMs: HEURISTIC_MS },
+        HEURISTIC_MS,
+      );
+    }
 
     // Tracks why the audio path was abandoned. A local failure (no audio, or
     // audio the browser cannot decode) is worth retrying as text. A node that

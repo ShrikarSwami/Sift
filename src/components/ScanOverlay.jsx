@@ -14,7 +14,7 @@ const STAGE_LABEL = {
  * The bar is honest about what it is: it runs the length of the scan window and
  * holds near the end rather than claiming completion before the node answers.
  */
-export function ScanOverlay({ phase }) {
+export function ScanOverlay({ phase, windowMs = SCAN_MS }) {
   return (
     <div className="relative grid aspect-square w-full max-w-[300px] place-items-center">
       {/* Static rings: the shape of the dashboard that is about to appear. */}
@@ -80,7 +80,7 @@ export function ScanOverlay({ phase }) {
             initial={{ width: "4%" }}
             /* Holds at 94% until the node actually answers. */
             animate={{ width: "94%" }}
-            transition={{ duration: SCAN_MS / 1000, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: windowMs / 1000, ease: [0.22, 1, 0.36, 1] }}
           />
         </span>
       </div>

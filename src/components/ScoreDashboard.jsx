@@ -90,6 +90,17 @@ function describeProvenance(client) {
   if (!r) return null;
   const secs = (ms) => `${((ms ?? 0) / 1000).toFixed(1)}s`;
 
+  if (r.heuristic)
+    return {
+      caption: "Scored via Local Edge Heuristics - 1.5s",
+      rows: [
+        ["Engine", "Local edge heuristics"],
+        ["Matched", r.matched ? `"${r.matched}"` : "phrase rule"],
+        ["Transcript", `${r.words || 0} words`],
+        ["Network", "None — no model call made"],
+      ],
+    };
+
   if (r.fallback)
     return {
       caption: `Fallback profile — ${r.fallbackReason ?? "node did not answer in time"}`,
@@ -179,7 +190,10 @@ export function ScoreDashboard({ client }) {
                 exit={{ opacity: 0, scale: 0.97 }}
                 transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
               >
-                <ScanOverlay phase={client.livePhase} />
+                <ScanOverlay
+                  phase={client.livePhase}
+                  windowMs={client.scanWindowMs}
+                />
               </motion.div>
             ) : (
               <motion.div

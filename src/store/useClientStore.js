@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { FAKE_CLIENTS, buildLiveClient } from "../data/demoClients";
+import { SCAN_MS } from "../lib/timing";
 
 /**
  * Pipeline state.
@@ -38,12 +39,14 @@ const build = (state) =>
         : [
             buildLiveClient({
               target: state.voiceTarget,
+              judgeSessionCount: state.judgeSessionCount,
               phase: state.voicePhase,
               liveTranscript: state.liveTranscript,
               finalTranscript: state.finalTranscript,
               result: state.result,
               error: state.error,
               inputDevice: state.inputDevice,
+              scanWindowMs: state.scanWindowMs,
             }),
           ]),
     ],
@@ -78,6 +81,10 @@ export const useClientStore = create((set, get) => ({
   voiceTarget: "carolina",
   /** Manual score overrides, keyed by client id. Set by the 1-5 hotkeys. */
   overrides: {},
+  /** Numbers each judge session; the next `j` press opens the one after. */
+  judgeSessionCount: 1,
+  /** Length of the current scan. Shorter on the heuristic short-circuit. */
+  scanWindowMs: SCAN_MS,
   /** Streaming browser-side text, shown while the mic is open. */
   liveTranscript: "",
   /** Authoritative text, returned by speech-to-text on the node. */
@@ -119,6 +126,7 @@ export const useClientStore = create((set, get) => ({
     reflow(set, get, {
       voiceTarget,
       voicePhase: "listening",
+      scanWindowMs: SCAN_MS,
       liveTranscript: "",
       finalTranscript: "",
       result: null,
@@ -127,6 +135,8 @@ export const useClientStore = create((set, get) => ({
     }),
 
   setInputDevice: (inputDevice) => reflow(set, get, { inputDevice }),
+
+  setScanWindow: (scanWindowMs) => reflow(set, get, { scanWindowMs }),
 
   updateLiveTranscript: (liveTranscript) =>
     reflow(set, get, { liveTranscript }),
@@ -139,9 +149,37 @@ export const useClientStore = create((set, get) => ({
   beginScoring: () => reflow(set, get, { voicePhase: "scoring" }),
 
   completeAnalysis: (result) => {
-    const target = get().voiceTarget;
+    const state = get();
+    const target = state.voiceTarget;
+
+    // A judge session is archived as its own numbered card and the counter
+    // advances, so the next `j` opens a fresh one rather than overwriting it.
+    if (target === "judge") {
+      const id = `judge-${state.judgeSessionCount}`;
+      const card = buildLiveClient({
+        target: "judge",
+        judgeSessionCount: state.judgeSessionCount,
+        phase: "scored",
+        liveTranscript: state.liveTranscript,
+        finalTranscript: state.finalTranscript,
+        result,
+        inputDevice: state.inputDevice,
+      });
+      reflow(set, get, {
+        ingested: [...state.ingested, { ...card, id, pinned: false }],
+        judgeSessionCount: state.judgeSessionCount + 1,
+        voicePhase: "idle",
+        result: null,
+        liveTranscript: "",
+        finalTranscript: "",
+        selectedId: id,
+        lastIngestedId: id,
+      });
+      return;
+    }
+
     // Drop any manual override on this card so the new result is what shows.
-    const { [target]: _dropped, ...overrides } = get().overrides;
+    const { [target]: _dropped, ...overrides } = state.overrides;
     reflow(set, get, {
       overrides,
       voicePhase: "scored",
@@ -165,6 +203,7 @@ export const useClientStore = create((set, get) => ({
       voicePhase: "idle",
       voiceTarget: "carolina",
       overrides: {},
+      judgeSessionCount: 1,
       liveTranscript: "",
       finalTranscript: "",
       result: null,
