@@ -45,6 +45,7 @@ export const heer = {
   role: "Principal",
   company: "Meridian Lane Capital",
   location: "Boston, MA",
+  email: "heer.jariwala812@gmail.com",
   stage: "Diligence",
   ticket: "$250K",
   owner: "You",
@@ -54,9 +55,10 @@ export const heer = {
     email: {
       label: "Email",
       meta: "9-message thread · 4 days",
+      from: "heer.jariwala812@gmail.com",
       action: {
         label: "Open in Gmail",
-        url: "https://mail.google.com/mail/u/0/#search/from%3Aheer",
+        url: "https://mail.google.com/mail/u/0/#search/from%3Aheer.jariwala812%40gmail.com",
       },
       excerpt:
         "Circling back — the team liked the deck, but we want to see another two quarters of retention before we can size anything. Can we revisit in the new year?",

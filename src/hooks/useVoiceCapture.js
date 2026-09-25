@@ -75,6 +75,54 @@ async function consumeStream(response, store) {
   return scored;
 }
 
+/**
+ * Input the demo prefers when it is plugged in. Anything else falls through to
+ * whatever the OS has set as the default, so the app still works on a laptop
+ * with no phone attached.
+ */
+const PREFERRED_INPUT = /shrishri\s*iphone/i;
+
+const AUDIO_CONSTRAINTS = {
+  channelCount: 1,
+  echoCancellation: true,
+  noiseSuppression: true,
+  autoGainControl: true,
+};
+
+/**
+ * Opens the mic, preferring PREFERRED_INPUT. Device labels are only readable
+ * once permission has been granted, so this takes the default stream first,
+ * then re-acquires if a better input turns out to be available.
+ */
+async function acquireStream() {
+  let stream = await navigator.mediaDevices.getUserMedia({
+    audio: AUDIO_CONSTRAINTS,
+  });
+
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const preferred = devices.find(
+      (d) => d.kind === "audioinput" && PREFERRED_INPUT.test(d.label),
+    );
+    const activeId = stream.getAudioTracks()[0]?.getSettings().deviceId;
+
+    if (preferred && preferred.deviceId !== activeId) {
+      const upgraded = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          ...AUDIO_CONSTRAINTS,
+          deviceId: { exact: preferred.deviceId },
+        },
+      });
+      stream.getTracks().forEach((t) => t.stop());
+      stream = upgraded;
+    }
+  } catch {
+    // The preferred device vanished or was refused; the default stream stands.
+  }
+
+  return stream;
+}
+
 export function useVoiceCapture() {
   const recorderRef = useRef(null);
   const chunksRef = useRef([]);
@@ -133,16 +181,7 @@ export function useVoiceCapture() {
       }
     }
 
-    // No deviceId constraint: that is what makes the browser follow the macOS
-    // default input, so switching to the iPhone in Sound settings just works.
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        channelCount: 1,
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      },
-    });
+    const stream = await acquireStream();
     streamRef.current = stream;
 
     const track = stream.getAudioTracks()[0];

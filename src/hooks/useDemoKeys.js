@@ -23,11 +23,16 @@ import { useVoiceCapture } from "./useVoiceCapture";
  * dashboard rather than showing three unrelated numbers.
  */
 export const SCORE_BANDS = [
-  { likelihood: 15, hesitance: 85, effort: 90 },
-  { likelihood: 35, hesitance: 65, effort: 70 },
-  { likelihood: 55, hesitance: 45, effort: 50 },
-  { likelihood: 78, hesitance: 22, effort: 28 },
-  { likelihood: 96, hesitance: 6, effort: 10 },
+  // 1 — Low intent / high effort
+  { likelihood: 20, hesitance: 85, effort: 90 },
+  // 2 — interpolated between the specified 1 and 3
+  { likelihood: 40, hesitance: 62, effort: 70 },
+  // 3 — Moderate intent
+  { likelihood: 60, hesitance: 40, effort: 50 },
+  // 4 — interpolated between the specified 3 and 5
+  { likelihood: 80, hesitance: 21, effort: 27 },
+  // 5 — Instant priority #1
+  { likelihood: 99, hesitance: 2, effort: 5 },
 ];
 
 export function useDemoKeys() {

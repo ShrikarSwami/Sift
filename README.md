@@ -28,9 +28,19 @@ The pipeline boots empty. A hidden `window` keydown listener drives the walkthro
 
 `1`–`5` set matched likelihood / hesitance / effort triples (`SCORE_BANDS` in
 `src/hooks/useDemoKeys.js`) so a forced card still reads coherently instead of
-showing three unrelated numbers. The board re-sorts on the new score, and the
-dashboard labels it **"Manual score — set from the keyboard."** A later live
-scoring run clears the override for that card.
+showing three unrelated numbers:
+
+| Key | l / h / e | Meaning |
+|---|---|---|
+| `1` | 20 / 85 / 90 | Low intent, high effort |
+| `2` | 40 / 62 / 70 | — |
+| `3` | 60 / 40 / 50 | Moderate intent |
+| `4` | 80 / 21 / 27 | — |
+| `5` | 99 / 2 / 5 | Instant priority #1 |
+
+The board re-sorts on the new score with the same Framer Motion transition as a
+live result, and the dashboard labels it **"Manual score — set from the
+keyboard."** A later live scoring run clears the override for that card.
 
 Nothing in the UI advertises the keys. Keystrokes are ignored while a text field
 has focus. The selected card scrolls itself into view, so a low-likelihood
@@ -164,9 +174,13 @@ The bridge is a Vite plugin (`server/inference-bridge.mjs`), so there is no
 second process to start: `/api/inference/{health,warm,take}`. With no
 `SIFT_NODE_HOST` set it returns a clear 503 rather than falling back to anything.
 
-The recorder sets no `deviceId` constraint, which is what makes it follow the OS
-default input — switching microphones in system settings needs no change here.
-The live device name is read off the track and shown on the Call tile.
+The recorder prefers a specific input (`PREFERRED_INPUT` in
+`src/hooks/useVoiceCapture.js`, currently the iPhone continuity mic) and falls
+back to the OS default when it is not attached. Device labels are only readable
+after permission is granted, so it opens the default stream first, then
+re-acquires if a better input turns out to be available; if that second request
+fails the default stream stands and recording continues uninterrupted. The live
+device name is read off the track and shown on the Call tile.
 
 ## Fake Mode
 

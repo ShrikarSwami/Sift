@@ -53,11 +53,17 @@ export function ClientInformation({ client }) {
           <p className="mt-1.5 text-[17px] text-fg-muted">
             {client.role} · {client.company}
           </p>
-          <p className="mt-2 flex items-center gap-2 text-[15px] text-fg-faint">
-            <MapPin size={15} strokeWidth={1.75} />
+          <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[15px] text-fg-faint">
+            <MapPin size={15} strokeWidth={1.75} className="shrink-0" />
             {client.location}
             <span aria-hidden="true">·</span>
             {client.capturedAt}
+            {client.email && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="text-fg-muted">{client.email}</span>
+              </>
+            )}
           </p>
         </div>
 
@@ -111,7 +117,9 @@ export function ClientInformation({ client }) {
                   {source.label}
                 </span>
                 <span className="truncate text-[13px] text-fg-faint">
-                  {source.meta}
+                  {source.from
+                    ? `${source.from} · ${source.meta}`
+                    : source.meta}
                 </span>
               </div>
               {source.excerpt ? (
