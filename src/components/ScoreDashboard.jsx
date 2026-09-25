@@ -101,6 +101,17 @@ function describeProvenance(client) {
       ],
     };
 
+  if (r.neutral)
+    return {
+      caption: `Inconclusive — ${r.fallbackReason ?? "nothing readable in the take"}`,
+      rows: [
+        ["Source", "Neutral profile"],
+        ["Reason", r.fallbackReason ?? "No signal detected"],
+        ["Transcript", `${r.words || 0} words`],
+        ["Action", "Manual review required"],
+      ],
+    };
+
   if (r.fallback)
     return {
       caption: `Fallback profile — ${r.fallbackReason ?? "node did not answer in time"}`,

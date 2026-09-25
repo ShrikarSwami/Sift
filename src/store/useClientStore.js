@@ -47,6 +47,7 @@ const build = (state) =>
               error: state.error,
               inputDevice: state.inputDevice,
               scanWindowMs: state.scanWindowMs,
+              priorTranscript: state.transcripts[state.voiceTarget] ?? "",
             }),
           ]),
     ],
@@ -85,6 +86,11 @@ export const useClientStore = create((set, get) => ({
   judgeSessionCount: 1,
   /** Length of the current scan. Shorter on the heuristic short-circuit. */
   scanWindowMs: SCAN_MS,
+  /**
+   * Transcript history per card. A client who speaks again appends to their
+   * Call block rather than overwriting it, so nothing said on stage is lost.
+   */
+  transcripts: {},
   /** Streaming browser-side text, shown while the mic is open. */
   liveTranscript: "",
   /** Authoritative text, returned by speech-to-text on the node. */
@@ -152,6 +158,21 @@ export const useClientStore = create((set, get) => ({
     const state = get();
     const target = state.voiceTarget;
 
+    // Fold this take into the card's running transcript, stamped so repeat
+    // takes read as a sequence rather than one run-on block.
+    const said = (state.finalTranscript || state.liveTranscript || "").trim();
+    const prior = state.transcripts[target] ?? "";
+    const stamp = new Date().toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+    const combined = said
+      ? prior
+        ? `${prior}\n\n[${stamp}] ${said}`
+        : said
+      : prior;
+    const transcripts = { ...state.transcripts, [target]: combined };
+
     // A judge session is archived as its own numbered card and the counter
     // advances, so the next `j` opens a fresh one rather than overwriting it.
     if (target === "judge") {
@@ -166,6 +187,7 @@ export const useClientStore = create((set, get) => ({
         inputDevice: state.inputDevice,
       });
       reflow(set, get, {
+        transcripts: { ...transcripts, [target]: "" },
         ingested: [...state.ingested, { ...card, id, pinned: false }],
         judgeSessionCount: state.judgeSessionCount + 1,
         voicePhase: "idle",
@@ -181,6 +203,11 @@ export const useClientStore = create((set, get) => ({
     // Drop any manual override on this card so the new result is what shows.
     const { [target]: _dropped, ...overrides } = state.overrides;
     reflow(set, get, {
+      transcripts,
+      // The accumulated transcript is now the record for this card, so the
+      // per-take fields are cleared to stop the last take rendering twice.
+      liveTranscript: "",
+      finalTranscript: "",
       overrides,
       voicePhase: "scored",
       result,
@@ -204,6 +231,7 @@ export const useClientStore = create((set, get) => ({
       voiceTarget: "carolina",
       overrides: {},
       judgeSessionCount: 1,
+      transcripts: {},
       liveTranscript: "",
       finalTranscript: "",
       result: null,

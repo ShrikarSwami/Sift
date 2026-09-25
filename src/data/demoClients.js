@@ -212,6 +212,7 @@ export function buildLiveClient({
   target = "carolina",
   judgeSessionCount = 1,
   scanWindowMs,
+  priorTranscript = "",
   phase,
   liveTranscript,
   finalTranscript,
@@ -225,7 +226,10 @@ export function buildLiveClient({
     target === "judge" ? `Judge Johns ${judgeSessionCount}` : base.name;
   const pending =
     phase === "listening" || phase === "transcribing" || phase === "scoring";
-  const transcript = (finalTranscript || liveTranscript || "").trim();
+  const current = (finalTranscript || liveTranscript || "").trim();
+  // Earlier takes stay on the card; this one is appended beneath them, so a
+  // client who speaks twice keeps both rather than overwriting the first.
+  const transcript = [priorTranscript, current].filter(Boolean).join("\n\n");
   const scored = phase === "scored" && result;
 
   return {
@@ -274,26 +278,28 @@ export function buildLiveClient({
         }
       : { likelihood: 0, hesitance: 0, effort: 0 },
     insight: scored
-      ? result.heuristic
-        ? // The heuristic takeaway already carries its own band label, so it
-          // must not be stacked under a second one saying the same thing.
-          result.likelihood >= 85
-          ? {
-              headline: "HIGH INTENT DETECTED: SHE WANTS IT :D",
-              body: result.keyTakeaway.replace(
-                /^HIGH INTENT DETECTED:\s*/i,
-                "",
-              ),
+      ? result.neutral
+        ? { headline: result.keyTakeaway, body: null }
+        : result.heuristic
+          ? // The heuristic takeaway already carries its own band label, so it
+            // must not be stacked under a second one saying the same thing.
+            result.likelihood >= 85
+            ? {
+                headline: "HIGH INTENT DETECTED: SHE WANTS IT :D",
+                body: result.keyTakeaway.replace(
+                  /^HIGH INTENT DETECTED:\s*/i,
+                  "",
+                ),
+              }
+            : { headline: result.keyTakeaway, body: null }
+          : {
+              fallback: Boolean(result.fallback),
+              headline:
+                result.likelihood >= 85
+                  ? "HIGH INTENT DETECTED: SHE WANTS IT :D"
+                  : `SCORED ${result.likelihood} BY ${String(result.model).toUpperCase()}`,
+              body: result.keyTakeaway,
             }
-          : { headline: result.keyTakeaway, body: null }
-        : {
-            fallback: Boolean(result.fallback),
-            headline:
-              result.likelihood >= 85
-                ? "HIGH INTENT DETECTED: SHE WANTS IT :D"
-                : `SCORED ${result.likelihood} BY ${String(result.model).toUpperCase()}`,
-            body: result.keyTakeaway,
-          }
       : null,
     remote: scored
       ? {
@@ -305,6 +311,7 @@ export function buildLiveClient({
           fallbackReason: result.fallbackReason ?? null,
           textOnly: Boolean(result.textOnly),
           heuristic: Boolean(result.heuristic),
+          neutral: Boolean(result.neutral),
           matched: result.matched ?? null,
           words: transcript.split(/\s+/).filter(Boolean).length,
         }
@@ -447,48 +454,54 @@ export const FAKE_CLIENTS = [
     role: "Principal",
     company: "Ember Hill Capital",
     location: "Seattle, WA",
-    stage: "Budget Hold",
+    stage: "Pilot Discussion",
     ticket: "$300K",
     owner: "You",
     capturedAt: "Sep 19 · 1:20 PM",
-    primarySource: "email",
+    primarySource: "call",
     sources: {
       call: {
         label: "Call",
-        meta: "Follow-up · 12 min",
+        meta: "Platform walkthrough · 26 min",
         excerpt:
-          "Short check-in. Allocation question unresolved, rescheduled twice.",
+          "Thanks for walking me through the platform. The BDO use case is compelling, and the UI looks sharp. I have a few hesitations around the integration timeline and whether it can handle our legacy CRM data. If you can prove the API connects smoothly during a pilot, we'd be willing to move forward with a small contract next quarter.",
       },
       email: {
         label: "Email",
         meta: "Follow-up scheduled · Oct 2",
         excerpt:
-          "Nothing has changed on our side — allocation for this cycle is committed. Let's put time on the calendar for early October.",
+          "Recapping the call — sending over our integration requirements so your team can size the pilot.",
       },
       meeting: null,
       docs: null,
     },
-    scores: { likelihood: 41, hesitance: 64, effort: 61 },
-    read: "Not a no, but a hard calendar wall. Nothing you say moves this quarter.",
+    scores: { likelihood: 69, hesitance: 45, effort: 60 },
+    read: "Real interest gated on one provable thing: that the API survives her legacy CRM.",
     signals: [
       {
-        tone: "negative",
-        label: "Allocation closed",
-        detail: '"allocation for this cycle is committed"',
-      },
-      {
-        tone: "negative",
-        label: "Rescheduled twice",
-        detail: "Two moved calls in three weeks",
+        tone: "positive",
+        label: "Named the use case",
+        detail:
+          '"The BDO use case is compelling" — she is selling it internally',
       },
       {
         tone: "positive",
-        label: "Holds the date",
-        detail: "Proposed the October follow-up herself",
+        label: "Offered a path to yes",
+        detail: 'Pilot first, then "a small contract next quarter"',
+      },
+      {
+        tone: "negative",
+        label: "Integration risk",
+        detail: "Doubts the platform handles her legacy CRM data",
+      },
+      {
+        tone: "neutral",
+        label: "Timeline hesitation",
+        detail: "Unresolved question on how long integration takes",
       },
     ],
     nextMove:
-      "Stop selling. Send one monthly update and hold the October slot.",
+      "Offer a scoped pilot against her legacy CRM. The API proof is the whole deal.",
   },
   {
     id: "manasvi",

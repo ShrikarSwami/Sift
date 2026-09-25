@@ -16,10 +16,20 @@ export const SCAN_MS = 3500;
 export const NODE_TIMEOUT_MS = 3500;
 
 /**
- * Used only when the node misses that deadline. The UI labels a result produced
- * this way as a fallback rather than claiming it came from the model.
+ * Used when the node misses its deadline on a take that DID read as high
+ * intent. The UI labels a result produced this way as a fallback rather than
+ * claiming it came from the model.
  */
 export const FALLBACK_SCORES = { l: 98, h: 6, e: 10 };
+
+/**
+ * Used when the heuristics found nothing AND the model could not be reached.
+ * Claiming 98 there would be inventing a signal out of silence, so the board
+ * says plainly that it could not read the room.
+ */
+export const NEUTRAL_SCORES = { l: 50, h: 50, e: 50 };
+export const NEUTRAL_TAKEAWAY =
+  "INCONCLUSIVE SIGNAL: Manual review required. Transcript ambiguous.";
 
 /**
  * Budget for the text-only scoring path, which skips transcription entirely.

@@ -117,25 +117,50 @@ Whichever finishes first waits for the other: the scan's progress bar holds at
 94% until the node answers, and the scores are **buffered** until the scan
 window elapses, so the re-sort can never fire mid-animation.
 
+### Cards and transcripts
+
+`h` and `c` update the existing card rather than adding a second one. A client
+who speaks again **appends** to their Call block, timestamped, so nothing said
+on stage is overwritten:
+
+```
+This looks great, lets move forward.
+
+[11:54 AM] Send the paperwork today.
+```
+
+Judge sessions are the exception by design — each `j` opens a new numbered card
+(`Judge Johns 1`, `2`, …) and archives the previous one with its score, so a
+panel of judges reads as separate rows rather than one growing transcript.
+
 ### Local edge heuristics (the fast path)
 
 Before any model call, the transcript is matched against phrase rules in
 `src/lib/heuristics.js`. A hit short-circuits everything: no network, no model,
 settled in **1.5s**.
 
-| Band | Phrases | Scores | Takeaway |
-|---|---|---|---|
-| Positive | love to invest, move forward, greatest, rocking wit, looks great, amazing | 95 / 5 / 10 | HIGH INTENT DETECTED: Ready to sign. |
-| Mediocre | think about it, not sure, maybe, need some time, follow up | 50 / 60 / 70 | MODERATE INTENT: Requires standard follow-up cycle. |
-| Negative | too expensive, not a fit, pass, no thanks, bad idea | 10 / 90 / 95 | LOW INTENT: Deprioritize and archive. |
+| Band | Scores | Takeaway |
+|---|---|---|
+| Positive (17 phrases) | 95 / 5 / 10 | HIGH INTENT DETECTED: Ready to sign. |
+| Mediocre (15 phrases) | 50 / 60 / 70 | MODERATE INTENT: Requires standard follow-up cycle. |
+| Negative (16 phrases) | 10 / 90 / 95 | LOW INTENT: Deprioritize and archive. |
 
-Matching is **word-boundary anchored, not substring** — a bare `pass` must not
-fire on "passionate" or "password", and `maybe` must not fire on "maybes". Both
-cases are covered by tests.
-
-Bands are tested in the order above, so an utterance carrying both enthusiasm
-and a hedge reads as the stronger signal. That bias is deliberate: on stage,
+Bands are tested in that order, so an utterance carrying both enthusiasm and a
+hedge reads as the stronger signal. That bias is deliberate: on stage,
 under-reading real intent is the costlier mistake.
+
+**Matching is case-insensitive substring**, which is loose by design — and the
+looseness has teeth. Measured collisions on ordinary pitch sentences:
+
+| Sentence | Scores as | Because of |
+|---|---|---|
+| "she is passionate about the product" | Negative 10/90/95 | `pass` |
+| "let me get you the password" | Negative 10/90/95 | `pass` |
+| "whatever the team decides is fine" | Negative 10/90/95 | `hate` |
+| "I passed your deck to my partner" | Negative 10/90/95 | `pass` |
+
+`STRICT_WORD_BOUNDARIES` in `src/lib/heuristics.js` flips matching to whole
+words, which clears every case above and leaves multi-word phrases untouched.
 
 The dashboard labels this path **"Scored via Local Edge Heuristics - 1.5s"** and
 reports which phrase matched, so the fast path is never mistaken for a model
@@ -153,8 +178,11 @@ completed sequence. There is no error state in the UI at all.
    "Unable to decode audio data"), the live Web Speech captions already on
    screen are sent straight to the scorer as text, skipping transcription
    entirely. Budget `TEXT_SCORE_TIMEOUT_MS`.
-3. **Fallback** — the stage profile (`FALLBACK_SCORES`), which still fires the
-   `HIGH INTENT DETECTED` banner and the re-rank.
+3. **Neutral** — if no phrase matched *and* the model never answered, the board
+   reports `NEUTRAL_SCORES` (50/50/50) with "INCONCLUSIVE SIGNAL: Manual review
+   required. Transcript ambiguous." Asserting 98 there would be inventing a
+   signal out of silence. The 98 profile is reserved for a take that did read
+   as high intent but lost its model call.
 
 Two guards sit on that ladder:
 

@@ -123,7 +123,7 @@ export function ClientInformation({ client }) {
                 </span>
               </div>
               {source.excerpt ? (
-                <p className="max-w-[68ch] text-[18px] leading-relaxed text-fg">
+                <p className="max-w-[68ch] text-[18px] leading-relaxed whitespace-pre-line text-fg">
                   {source.excerpt}
                   {source.live && (
                     <span

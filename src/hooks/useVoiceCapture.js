@@ -9,6 +9,8 @@ import {
   TEXT_SCORE_TIMEOUT_MS,
   MIN_TRANSCRIPT_WORDS,
   FALLBACK_SCORES,
+  NEUTRAL_SCORES,
+  NEUTRAL_TAKEAWAY,
 } from "../lib/timing";
 
 /**
@@ -46,6 +48,26 @@ function fallbackResult(reason, scanStarted) {
     keyTakeaway: "Ready to sign. Send paper before anything cools.",
     model: "fallback profile",
     fallback: true,
+    fallbackReason: reason,
+    transcribeMs: 0,
+    ms: 0,
+    totalMs: Date.now() - scanStarted,
+  };
+}
+
+/**
+ * Nothing could be read: no phrase matched and the model never answered.
+ * Inventing a 98 here would assert a signal that was never detected, so the
+ * board reports the ambiguity instead.
+ */
+function neutralResult(reason, scanStarted) {
+  return {
+    likelihood: NEUTRAL_SCORES.l,
+    hesitance: NEUTRAL_SCORES.h,
+    convictionEffort: NEUTRAL_SCORES.e,
+    keyTakeaway: NEUTRAL_TAKEAWAY,
+    model: "inconclusive",
+    neutral: true,
     fallbackReason: reason,
     transcribeMs: 0,
     ms: 0,
@@ -285,14 +307,17 @@ export function useVoiceCapture() {
       }
     }
 
-    // --- Path 3: the stage profile. The sequence always completes.
+    // --- Path 3: nothing readable. No phrase matched and the model did not
+    // answer, so report the ambiguity rather than asserting a score.
     return revealAfterScan(
       store,
       scanStarted,
-      fallbackResult(
-        spoken
-          ? "node did not answer in time"
-          : "no usable audio or transcript",
+      neutralResult(
+        nodeUnresponsive
+          ? "node unreachable and no phrase matched"
+          : spoken
+            ? "scoring did not return and no phrase matched"
+            : "no usable audio or transcript",
         scanStarted,
       ),
     );
